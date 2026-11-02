@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; font-src 'self'; img-src 'self' data:; connect-src https://nzkbhyhmsscvvqhqdsdg.supabase.co; form-action 'none'; base-uri 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="description" content="متجر كابتن: عناصر مميزة لبطاقة اللاعب وشعار الفريق، وباقات المتاجر، ورسوم الملاعب، عبر زين كاش.">
+<title>متجر كابتن</title>
+<link rel="stylesheet" href="shop.css">
+<script type="module" src="shop.js"></script>
+</head>
+<body>
+<header class="top">
+  <div class="top-in">
+    <a class="brand" href="./" aria-label="متجر كابتن">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 100 114" width="26" height="30"><path d="M10 8H90V56C90 80 70 96 50 104C30 96 10 80 10 56Z" fill="currentColor"/><path d="M50 30L57 45L73 47L61 58L64 74L50 66L36 74L39 58L27 47L43 45Z" fill="#F2C94C"/></svg>
+      </span>
+      <span class="brand-name">متجر كابتن</span>
+    </a>
+    <div id="account-chip" class="chip-slot"></div>
+  </div>
+</header>
+
+<main id="app" aria-live="polite">
+  <section class="hero">
+    <h1>متجر كابتن</h1>
+    <p>لمسة مميزة لبطاقتك وشعار فريقك، وباقات المتاجر، ورسوم الملاعب، تدفعها عبر زين كاش وتجدها في تطبيق كابتن فوراً.</p>
+  </section>
+  <div id="banner"></div>
+  <div id="returned"></div>
+  <section id="signin" class="card" hidden></section>
+  <section id="venue" class="card" hidden></section>
+  <section id="shelf"></section>
+  <section id="store" class="card" hidden></section>
+  <section id="history" class="card" hidden></section>
+  <noscript><p class="card">يحتاج متجر كابتن إلى تشغيل JavaScript في متصفحك.</p></noscript>
+</main>
+
+<footer class="foot">
+  <div class="foot-in">
+    <h2>قبل أن تشتري</h2>
+    <ul>
+      <li>يُدفع الثمن عبر زين كاش على صفحتهم، ولا نرى رقم محفظتك السري ولا نحفظ أي بيانات مصرفية.</li>
+      <li>لا نمنح شيئاً قبل أن يؤكد زين كاش الدفع لخادمنا مباشرة. ويظهر ما اشتريته في تطبيق كابتن بعد التأكيد.</li>
+      <li>العناصر المميزة لا قيمة نقدية لها، ولا تُحوَّل إلى مال، وتبقى في حسابك ما دام موجوداً. الكرات في التطبيق تُكسب باللعب فقط ولا تُباع.</li>
+      <li>الباقات والتمييز لمدة 30 يوماً من الدفع، ولا تتجدد تلقائياً.</li>
+      <li>من هو دون 18 سنة يشتري بموافقة وليّ أمره، وحدّه 25,000 دينار في الشهر.</li>
+      <li>إذا دفعت ولم يصلك ما دفعت ثمنه، أو دفعت مرتين، نعيد المبلغ. التفاصيل في <a href="../terms/#shop">شروط البيع</a>.</li>
+    </ul>
+    <p class="foot-links"><a href="../terms/#shop">شروط البيع والاسترداد</a> · <a href="../privacy/">سياسة الخصوصية</a> · <a id="contact" href="mailto:captainappofficial@gmail.com">captainappofficial@gmail.com</a></p>
+  </div>
+</footer>
+
+<dialog id="buy" aria-labelledby="buy-title"></dialog>
+</body>
+</html>
