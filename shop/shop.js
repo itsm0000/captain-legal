@@ -19,6 +19,7 @@ const FN = `${BACKEND.url}/functions/v1/sign-in`;
 const page = {
   /** @type {Session | null} */ session: null,
   /** @type {any} */ catalogue: null,
+  /** @type {any[]} */ trying: [],
   /** @type {any} */ account: null,
   /** @type {boolean | null} */ payAvailable: null,
   /** @type {boolean | null} */ otpAvailable: null,
@@ -131,8 +132,42 @@ function crestArt(shapePath, effect) {
   return svg;
 }
 
+const STILL = typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+/** Films play only while on screen, so a phone downloads and decodes only what is looked at. */
+const watcher = typeof IntersectionObserver === "function"
+  ? new IntersectionObserver((seen) => {
+      for (const e of seen) {
+        const video = /** @type {HTMLVideoElement} */ (e.target);
+        if (e.isIntersecting) {
+          if (video.preload !== "auto") video.preload = "auto";
+          video.play().catch(() => {});
+        } else video.pause();
+      }
+    }, { rootMargin: "200px 0px" })
+  : null;
+
+/**
+ * The item as the app draws it: its film (scripts/shop-media.mjs), or its picture with motion off.
+ * @param {any} entry @param {{ video: string | null, poster: string }} media
+ */
+function mediaArt(entry, media) {
+  const box = h("div", { class: `art media ${entry.group === "set" ? "card-art" : ""}`, "aria-hidden": "true" });
+  if (media.video && !STILL) {
+    const video = /** @type {HTMLVideoElement} */ (h("video", { muted: true, loop: true, playsinline: true, preload: "none", poster: media.poster, disablepictureinpicture: true, disableremoteplayback: true }));
+    video.muted = true;
+    video.src = media.video;
+    if (watcher) watcher.observe(video);
+    else video.autoplay = true;
+    box.append(video);
+  } else box.append(h("img", { src: media.poster, alt: "", loading: "lazy", decoding: "async" }));
+  return box;
+}
+
 /** @param {any} entry */
 function itemArt(entry) {
+  const media = L.mediaOf(entry);
+  if (media) return mediaArt(entry, media);
   const box = h("div", { class: "art", "aria-hidden": "true" });
   if (entry.group === "crest_effect" && EFFECT[entry.key]) box.append(crestArt(SHAPES.shield, entry.key));
   else if (entry.group === "crest_shape" && SHAPES[entry.key]) box.append(crestArt(SHAPES[entry.key], null));
@@ -260,6 +295,19 @@ async function token() {
   }
   saveSession(toSession(result.data));
   return /** @type {Session} */ (page.session).accessToken;
+}
+
+/** Every set of the catalogue with its state, so sets still free to try show beside those for sale. */
+async function readSets() {
+  let response;
+  try {
+    response = await fetch(`${BACKEND.url}/rest/v1/cosmetic_sets?select=id,name,tier,status,price_iqd&order=sort`, { headers: { apikey: BACKEND.key }, credentials: "omit", cache: "no-store" });
+  } catch {
+    return [];
+  }
+  if (!response.ok) return [];
+  const data = await response.json().catch(() => []);
+  return Array.isArray(data) ? data : [];
 }
 
 async function readCatalogue() {
@@ -527,6 +575,7 @@ function askToBuy(what) {
  * @param {{ kind: string, subject: string, name: string, price: number, cosmetic: boolean, verb?: string }} what @param {string | null} stop
  */
 function buyButton(what, stop) {
+  if (stop === "TRYING") return h("span", { class: "state trying" }, icon("sparkles"), "مجاني خلال التجربة");
   if (!page.session) return h("button", { class: "btn ghost full", type: "button", onclick: toSignin }, icon("lock"), "سجّل دخولك");
   if (stop === "ALREADY_OWNED") return h("span", { class: "state ok" }, icon("check"), "في حسابك");
   if (stop) return h("button", { class: "btn ghost full", type: "button", disabled: true, title: L.errorWords(stop) }, stop === "MONTHLY_CAP" ? "يتجاوز حدّك الشهري" : stop === "PLAN_SMALLER" ? "أصغر من باقتك الحالية" : "غير متاح");
@@ -648,7 +697,7 @@ function renderShelf() {
   const box = /** @type {HTMLElement} */ (document.querySelector("#shelf"));
   box.replaceChildren();
   if (!page.catalogue) return;
-  const groups = L.shelf(page.catalogue, page.account);
+  const groups = L.shelf(page.catalogue, page.account, page.trying);
   if (!groups.length) {
     box.append(h("div", { class: "card" }, h("p", {}, "لا توجد عناصر معروضة للبيع الآن.")));
     return;
@@ -661,13 +710,13 @@ function renderShelf() {
     box.append(h("section", { class: "group" },
       h("h2", {}, icon("sparkles"), group.title),
       h("p", { class: "sub" }, group.note),
-      h("div", { class: "grid" }, group.entries.map((entry) =>
+      h("div", { class: `grid${group.kind === "set" ? " sets" : ""}` }, group.entries.map((entry) =>
         h("article", { class: `item${entry.owned ? " owned" : ""}` },
           itemArt(entry),
           h("div", { class: "item-body" },
             h("p", { class: "item-name" }, h("span", {}, entry.name), L.tierWords(entry.tier) ? h("span", { class: "tier" }, L.tierWords(entry.tier)) : null),
             h("span", { class: "price" }, L.formatIQD(entry.price)),
-            buyButton({ kind: entry.kind, subject: entry.subject, name: entry.name, price: entry.price, cosmetic: true }, page.session ? entry.stop : null)))))));
+            buyButton({ kind: entry.kind, subject: entry.subject, name: entry.name, price: entry.price, cosmetic: true }, page.session || entry.stop === "TRYING" ? entry.stop : null)))))));
   }
 }
 
@@ -708,7 +757,8 @@ async function start() {
   }
   page.session = loadSession();
   render();
-  const [catalogue, otp, pay] = await Promise.allSettled([readCatalogue(), available("/otp/available"), available("/pay/available")]);
+  const [catalogue, otp, pay, sets] = await Promise.allSettled([readCatalogue(), available("/otp/available"), available("/pay/available"), readSets()]);
+  page.trying = sets.status === "fulfilled" ? sets.value : [];
   if (catalogue.status === "fulfilled") page.catalogue = catalogue.value;
   else page.serverTrouble = catalogue.reason instanceof Trouble ? catalogue.reason.code : "SERVER_ERROR";
   page.otpAvailable = otp.status === "fulfilled" ? otp.value : null;

@@ -159,3 +159,35 @@ dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
   .item .btn { padding: 8px 10px; gap: 6px; white-space: nowrap; font-size: 15px; }
 }
 @media (max-width: 360px) { .grid { grid-template-columns: 1fr; } }
+
+/* ── The showcase (15 November 2026): the shelf as a dark display case in the brand's midnight violet
+   and champagne gold, each item shown by the film the app's own code draws (media/). ── */
+#shelf:not(:empty) { margin: 24px -16px 0; padding: 8px 16px 28px; background: radial-gradient(140% 60% at 50% 0%, #2E1C57 0%, #1F133B 45%, #140C28 100%); color: #F4EEFF; border-radius: 0; }
+@media (min-width: 992px) { #shelf:not(:empty) { margin-inline: 0; border-radius: 24px; padding-inline: 24px; } }
+#shelf .steps li { background: rgba(255, 255, 255, 0.05); border-color: rgba(212, 178, 122, 0.22); color: #E9E1FA; }
+#shelf .steps li::before { background: #D4B27A; color: #1F133B; }
+#shelf .group h2 { color: #F4EEFF; font-size: 22px; }
+#shelf .group h2 svg { color: #D4B27A; }
+#shelf .group .sub { color: #B9AED6; }
+#shelf .item { background: linear-gradient(180deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.025)); border: 1px solid rgba(212, 178, 122, 0.22); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); transition: transform 0.2s ease, border-color 0.2s ease; }
+#shelf .item:hover { transform: translateY(-2px); border-color: rgba(212, 178, 122, 0.55); }
+#shelf .item.owned { border-color: rgba(52, 211, 153, 0.6); }
+#shelf .item-name { color: #F4EEFF; }
+#shelf .price { color: #E8CB94; }
+#shelf .tier { background: rgba(212, 178, 122, 0.16); color: #E8CB94; }
+#shelf .btn { background: linear-gradient(180deg, #E2C48E, #C9A462); color: #1F133B; border: 0; }
+#shelf .btn.ghost { background: rgba(255, 255, 255, 0.06); color: #E9E1FA; border: 1px solid rgba(255, 255, 255, 0.16); }
+#shelf .btn:disabled { opacity: 0.75; }
+#shelf .state.trying { display: inline-flex; gap: 6px; align-items: center; justify-content: center; min-height: 40px; border-radius: 12px; background: rgba(212, 178, 122, 0.12); color: #E8CB94; font-weight: 600; font-size: 14px; text-align: center; }
+#shelf .state.trying svg { width: 16px; height: 16px; }
+
+.art.media { height: auto; aspect-ratio: 1 / 1; background: #1A1033; overflow: hidden; }
+.art.media video, .art.media img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.art.media.card-art { aspect-ratio: 540 / 696; background: #050A1E; }
+.art.media.card-art video, .art.media.card-art img { object-fit: contain; }
+#shelf .grid.sets { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 16px; }
+#shelf .grid.sets .item-name { font-size: 18px; }
+@media (max-width: 560px) {
+  #shelf .grid.sets { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .art.media { height: auto; }
+}

@@ -111,12 +111,31 @@ export const countdown = (seconds) => `${Math.floor(seconds / 60)}:${String(Math
  * them art (ROUND_2_12.md §12): the app cannot show them yet, so the page does not sell them.
  */
 export const GROUPS = Object.freeze([
+  { kind: "set", title: "أطقم البطاقة", note: "بطاقة لاعب متحركة كاملة: إطار ومشهد وحركة خاصة بكل طقم، باسمك ورقمك." },
   { kind: "crest_effect", title: "تأثيرات الشعار", note: "تتحرك حول شعار فريقك أينما ظهر." },
   { kind: "title_effect", title: "تأثيرات اللقب", note: "تتحرك حول لقبك على بطاقة اللاعب." },
   { kind: "title_font", title: "خطوط اللقب", note: "يُكتب بها لقبك على بطاقتك." },
   { kind: "crest_shape", title: "أشكال الشعار", note: "شكل جديد لشعار فريقك." },
-  { kind: "set", title: "الأطقم", note: "طقم متحرك لبطاقة اللاعب." },
 ]);
+
+/**
+ * Each item's film and picture in media/, drawn by the app's own code (scripts/shop-media.mjs).
+ * null for anything that has none, which the page draws as before.
+ * @param {{ group: string, key: string }} entry @returns {{ video: string | null, poster: string } | null}
+ */
+export function mediaOf(entry) {
+  const key = String(entry.key ?? "").replace(/[^a-z0-9-]/g, "");
+  if (!key) return null;
+  if (entry.group === "set") return { video: `media/sets/${key}.mp4`, poster: `media/sets/${key}.webp` };
+  if (entry.group === "crest_effect" && EFFECT_KEYS.includes(key)) return { video: `media/effects/crest-${key}.mp4`, poster: `media/effects/crest-${key}.webp` };
+  if (entry.group === "title_effect" && EFFECT_KEYS.includes(key)) return { video: `media/effects/title-${key}.mp4`, poster: `media/effects/title-${key}.webp` };
+  if (entry.group === "title_font" && FONT_KEYS.includes(key)) return { video: null, poster: `media/fonts/${key}.webp` };
+  if (entry.group === "crest_shape" && SHAPE_KEYS.includes(key)) return { video: null, poster: `media/shapes/${key}.webp` };
+  return null;
+}
+const EFFECT_KEYS = ["fire", "lightning", "poison", "ice"];
+const FONT_KEYS = ["lalezar", "rakkas", "reem-kufi", "aref-ruqaa"];
+const SHAPE_KEYS = ["kite", "notched", "ticket", "star"];
 
 export const HIDDEN_KINDS = Object.freeze(["crest_emblem"]);
 
@@ -137,8 +156,13 @@ export function monthRoom(state) {
  * The players' shelf: the catalogue's paid items and sets, grouped, each with what stops it for
  * this account (null when it can be bought). Signed out, nothing is owned and nothing is capped.
  */
-/** @param {any} catalogue @param {any} state */
-export function shelf(catalogue, state) {
+/**
+ * `trying` is the catalogue's own list of sets (cosmetic_sets, readable by anyone): a set still in
+ * preview is free in the app for everyone while it is tried, so it shows here with its price and
+ * TRYING instead of a button, and is sold from the day it turns paid.
+ * @param {any} catalogue @param {any} state @param {any[]} [trying]
+ */
+export function shelf(catalogue, state, trying = []) {
   const owned = new Set([...(state?.items ?? []), ...(state?.sets ?? [])]);
   const room = monthRoom(state);
   /** @type {{ group: string, kind: string, subject: string, key: string, name: string, tier: unknown, price: number }[]} */
@@ -151,11 +175,16 @@ export function shelf(catalogue, state) {
     if (!set || typeof set.id !== "string") continue;
     entries.push({ group: "set", kind: "set", subject: set.id, key: set.id, name: String(set.name ?? ""), tier: set.tier, price: Number(set.price_iqd) });
   }
+  const sold = new Set(entries.map((e) => e.subject));
+  for (const set of Array.isArray(trying) ? trying : []) {
+    if (!set || typeof set.id !== "string" || set.status !== "preview" || sold.has(set.id)) continue;
+    entries.push({ group: "set", kind: "set", subject: set.id, key: set.id, name: String(set.name ?? ""), tier: set.tier, price: Number(set.price_iqd), trying: true });
+  }
   return GROUPS.map((group) => ({
     ...group,
     entries: entries
       .filter((e) => e.group === group.kind && Number.isFinite(e.price) && e.price > 0)
-      .map((e) => ({ ...e, owned: owned.has(e.subject), stop: owned.has(e.subject) ? "ALREADY_OWNED" : e.price > room ? "MONTHLY_CAP" : null })),
+      .map((e) => ({ ...e, owned: owned.has(e.subject), stop: owned.has(e.subject) ? "ALREADY_OWNED" : e.trying ? "TRYING" : e.price > room ? "MONTHLY_CAP" : null })),
   })).filter((group) => group.entries.length > 0);
 }
 
