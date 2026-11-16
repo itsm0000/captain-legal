@@ -165,7 +165,7 @@ export function monthRoom(state) {
 export function shelf(catalogue, state, trying = []) {
   const owned = new Set([...(state?.items ?? []), ...(state?.sets ?? [])]);
   const room = monthRoom(state);
-  /** @type {{ group: string, kind: string, subject: string, key: string, name: string, tier: unknown, price: number }[]} */
+  /** @type {{ group: string, kind: string, subject: string, key: string, name: string, tier: unknown, price: number, trying?: boolean }[]} */
   const entries = [];
   for (const item of Array.isArray(catalogue?.items) ? catalogue.items : []) {
     if (!item || typeof item.id !== "string" || HIDDEN_KINDS.includes(item.kind)) continue;
