@@ -6,60 +6,204 @@
 <title>جرّب كابتن · CAPTAIN test</title>
 <meta name="description" content="النسخة التجريبية من كابتن مفتوحة على أندرويد. أربع خطوات وتدخل.">
 <style>
-  :root { --ink: #1F133B; --muted: #4B4566; --line: #E6E1F0; --gold: #B8860B; --gold-ink: #1F133B; --gold-bg: #F2C94C; --bg: #F7F5FB; --card: #FFFFFF; }
-  @media (prefers-color-scheme: dark) { :root { --ink: #F5F1FF; --muted: #B9B1D3; --line: #2E2350; --gold: #F2C94C; --gold-ink: #1F133B; --gold-bg: #F2C94C; --bg: #1F133B; --card: #281A4A; } }
+  :root { --ink: #1F133B; --muted: #4B4566; --line: #E6E1F0; --gold: #8A6508; --gold-ink: #1F133B; --gold-bg: #F2C94C; --bg: #F7F5FB; --card: #FFFFFF; --soft: #EFEBF7; --blue: #0B57D0; }
+  @media (prefers-color-scheme: dark) { :root { --ink: #F5F1FF; --muted: #B9B1D3; --line: #3A2D60; --gold: #F2C94C; --bg: #1F133B; --card: #281A4A; --soft: #33245A; } }
   * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.7 "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif; }
-  main { max-width: 560px; margin: 0 auto; padding: 32px 16px 64px; }
-  h1 { font-size: 28px; margin: 0; }
-  .lead { color: var(--muted); margin: 8px 0 0; }
-  ol { list-style: none; padding: 0; margin: 24px 0 0; counter-reset: step; }
-  li { counter-increment: step; background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px 18px 20px; margin-top: 14px; position: relative; padding-inline-start: 64px; }
-  li::before { content: counter(step); position: absolute; inset-inline-start: 18px; top: 18px; width: 32px; height: 32px; border-radius: 50%; background: var(--gold-bg); color: var(--gold-ink); font-weight: 700; display: grid; place-items: center; }
-  li strong { display: block; font-size: 18px; }
-  li p { color: var(--muted); margin: 4px 0 0; }
-  .btn { display: inline-block; margin-top: 10px; padding: 10px 18px; border-radius: 12px; background: var(--gold-bg); color: var(--gold-ink); font-weight: 700; text-decoration: none; }
-  .note { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; margin-top: 24px; color: var(--muted); }
-  .note strong { color: var(--ink); }
-  .note p { margin: 0; }
-  .note p + p { margin-top: 10px; }
-  [lang="en"] { direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+  html, body { margin: 0; }
+  body { background: var(--bg); color: var(--ink); font: 17px/1.7 "IBM Plex Sans Arabic", "Segoe UI", Tahoma, sans-serif; }
+  main { max-width: 480px; margin: 0 auto; padding: 20px 16px 48px; min-height: 100svh; display: flex; flex-direction: column; }
+  .brand { color: var(--muted); font-size: 15px; text-align: center; margin: 0; }
+  .progress { display: flex; gap: 8px; justify-content: center; margin: 14px 0 6px; }
+  .progress span { width: 40px; height: 6px; border-radius: 3px; background: var(--line); }
+  .progress span.on { background: var(--gold-bg); }
+  .count { text-align: center; color: var(--muted); font-size: 14px; margin: 0; }
+  section { display: none; flex: 1; flex-direction: column; text-align: center; padding-top: 18px; }
+  section.show { display: flex; }
+  h1 { font-size: 26px; line-height: 1.4; margin: 0; }
+  .lead { color: var(--muted); margin: 10px 0 0; }
+  .lead b { color: var(--ink); }
+  .pic { margin: 22px auto 0; width: 100%; max-width: 340px; border-radius: 18px; border: 1px solid var(--line); background: var(--card); overflow: hidden; }
+  .pic img { display: block; width: 100%; height: auto; }
+  .go { display: block; width: 100%; margin: 26px 0 0; padding: 18px 20px; border: 0; border-radius: 16px; background: var(--gold-bg); color: var(--gold-ink); font: inherit; font-size: 20px; font-weight: 700; text-decoration: none; text-align: center; box-shadow: 0 6px 18px rgba(184, 134, 11, .35); cursor: pointer; }
+  .after { color: var(--muted); font-size: 15px; margin: 12px 0 0; }
+  details { margin-top: 22px; text-align: start; background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; color: var(--muted); font-size: 15px; }
+  details summary { cursor: pointer; color: var(--ink); font-weight: 600; }
+  details p { margin: 8px 0 0; }
+  .back { margin-top: auto; padding-top: 24px; background: none; border: 0; color: var(--muted); font: inherit; font-size: 15px; text-decoration: underline; cursor: pointer; }
   a { color: var(--gold); }
+  [lang="en"] { direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
+  /* the Google Groups page, drawn: the real page shows only after the tester signs in */
+  .groups { padding: 14px 16px 18px; text-align: start; direction: ltr; font-family: Roboto, Arial, sans-serif; color: #1F1F1F; background: #FFFFFF; }
+  .groups .bar { display: flex; align-items: center; gap: 10px; font-size: 18px; color: #444746; }
+  .groups .bar svg { flex: none; }
+  .groups .title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; }
+  .groups .name { font-size: 18px; }
+  .groups .join { flex: none; padding: 7px 16px; border-radius: 20px; background: var(--blue); color: #FFFFFF; font-size: 14px; font-weight: 500; outline: 4px solid #F2C94C; outline-offset: 4px; }
+  .groups .empty { margin-top: 18px; height: 54px; border-radius: 10px; background: #F1F3F4; }
+  .app-icon { display: block; margin: 8px auto 18px; border-radius: 22px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+  .done-mark { margin: 26px auto 0; width: 84px; height: 84px; border-radius: 50%; background: var(--gold-bg); display: grid; place-items: center; }
+  .note { margin-top: 22px; text-align: start; color: var(--muted); font-size: 15px; }
+  .note p { margin: 0; }
+  .note p + p { margin-top: 8px; }
+  .note b { color: var(--ink); }
 </style>
 </head>
 <body>
 <main>
-  <h1>النسخة التجريبية من كابتن مفتوحة</h1>
-  <p class="lead">على هواتف أندرويد بالعراق. أربع خطوات وتدخل، وكلها مجانية.</p>
+  <p class="brand">كابتن · النسخة التجريبية على أندرويد</p>
+  <div class="progress" aria-hidden="true"><span></span><span></span><span></span><span></span></div>
+  <p class="count" id="count"></p>
 
-  <ol>
-    <li>
-      <strong>انضم لمجموعة المجرّبين</strong>
-      <p>افتحها من هاتف أندرويد، بنفس حساب Gmail اللي بـ Google Play، واضغط «<span lang="en">Join group</span>». محد يشوف بريدك غيرنا.</p>
-      <p>إذا طلعتلك رسالة «ليس لديك إذن للوصول إلى هذا المحتوى» أو إنك ما تگدر تشوف المحادثات، عادي، المجموعة بلا محادثات. بس اضغط الزر اللي فوگ: «الانضمام إلى المجموعة» أو «<span lang="en">Join group</span>».</p>
-      <a class="btn" href="https://groups.google.com/g/captain-testers">انضم للمجموعة</a>
-    </li>
-    <li>
-      <strong>فعّل التجربة</strong>
-      <p>افتح رابط التجربة واضغط «<span lang="en">Become a tester</span>».</p>
-      <a class="btn" href="https://play.google.com/apps/testing/com.captain.football">رابط التجربة</a>
-    </li>
-    <li>
-      <strong>نزّل كابتن</strong>
-      <p>من صفحة Google Play اللي تفتح، أو من هذا الزر. إذا ما طلع، انتظر كم دقيقة وارجع جرّب.</p>
-      <p>افتحه واضغط «الدخول بحساب Google»، ونفس الحساب يكفي. لا رمز ولا كلمة مرور، ورقمك ينطلب بس من تحجز أول مرة.</p>
-      <a class="btn" href="https://play.google.com/store/apps/details?id=com.captain.football">نزّل من Google Play</a>
-    </li>
-    <li>
-      <strong>خلّيه بهاتفك ١٤ يوم</strong>
-      <p>جوجل ما يخلّي تطبيق جديد ينزل للكل إلا إذا جرّبوه ناس ١٤ يوم ورا بعض. افتحه كم مرة: شوف الملاعب، سوّي فريقك، جرّب حجز. وكل يوم تبقى بيه يقرّبنا من الإطلاق.</p>
-    </li>
-  </ol>
+  <!-- shown instead of the steps inside Facebook, Instagram, TikTok and other apps' own browsers, where Google often refuses sign-in -->
+  <section data-step="browser">
+    <h1>افتحها بـ Chrome أول</h1>
+    <p class="lead">فاتحها من داخل تطبيق (فيسبوك، إنستغرام، تيك توك). جوجل ما يخلّيك تسجّل دخول هنا، فافتحها بالمتصفح.</p>
+    <a class="go" id="open-chrome" href="https://itsm0000.github.io/captain-legal/join/">افتح بـ Chrome</a>
+    <details>
+      <summary>الزر ما اشتغل؟</summary>
+      <p>اضغط النقاط الثلاث فوگ (⋮ أو …) واختار «فتح في المتصفح» أو «<span lang="en">Open in browser</span>».</p>
+    </details>
+    <button class="back" type="button" data-goto="resume">أكمل هنا على كل حال</button>
+  </section>
 
-  <div class="note">
-    <p><strong>عندك آيفون؟</strong> أندرويد أول، والآيفون بعده. تابعنا وراح نبلغك.</p>
-    <p><strong>لقيت مشكلة؟</strong> راسلنا على أي حساب من حساباتنا، أو على <a href="mailto:captainappofficial@gmail.com">captainappofficial@gmail.com</a>، ويا صورة للشاشة إذا تگدر.</p>
-  </div>
+  <section data-step="iphone">
+    <h1>التجربة الحين على أندرويد بس</h1>
+    <p class="lead">الآيفون بعده. تابعنا على حساباتنا وراح نبلغك أول ما يفتح.</p>
+    <button class="back" type="button" data-goto="resume">عندي أندرويد، كمّل</button>
+  </section>
+
+  <section data-step="1">
+    <h1>انضم لمجموعة المجرّبين</h1>
+    <p class="lead">بنفس حساب Gmail اللي بـ Google Play. اضغط <b>«<span lang="en">Join group</span>»</b> أو <b>«الانضمام إلى المجموعة»</b> فوگ الصفحة، وبعدها ارجع هنا.</p>
+    <div class="pic" aria-hidden="true">
+      <div class="groups">
+        <div class="bar">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444746" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+          <span>Groups</span>
+        </div>
+        <div class="title"><span class="name">CAPTAIN testers</span><span class="join">Join group</span></div>
+        <div class="empty"></div>
+      </div>
+    </div>
+    <a class="go" data-next="2" target="_blank" rel="noopener" href="https://groups.google.com/g/captain-testers">افتح المجموعة</a>
+    <p class="after">بعد ما تنضم، ارجع لهنا وتطلعلك الخطوة الجاية.</p>
+    <details>
+      <summary>طلعتلي رسالة «ليس لديك إذن» أو «ماكو محادثات»</summary>
+      <p>عادي، المجموعة بلا محادثات. إذا شفت «<span lang="en">No conversations yet</span>» يعني انضميت. ارجع لهنا.</p>
+      <p>محد يشوف بريدك غيرنا.</p>
+    </details>
+  </section>
+
+  <section data-step="2">
+    <h1>فعّل التجربة</h1>
+    <p class="lead">اضغط الزر الأزرق <b>«<span lang="en">Become a tester</span>»</b> أو <b>«أصبح مختبِرًا»</b> بآخر الصفحة، وبعدها ارجع هنا.</p>
+    <div class="pic"><img src="become-tester.jpg" width="600" height="428" alt="صفحة Google Play للتجربة، والزر الأزرق Become a tester بآخرها"></div>
+    <a class="go" data-next="3" target="_blank" rel="noopener" href="https://play.google.com/apps/testing/com.captain.football">افتح صفحة التجربة</a>
+    <p class="after">بعد ما تضغطه، ارجع لهنا.</p>
+    <details>
+      <summary>الصفحة تگول إن التجربة مو متاحة</summary>
+      <p>يعني الحساب مو بالمجموعة بعد. تأكد إن نفس حساب Gmail مفتوح بالصفحتين، وارجع للخطوة الأولى.</p>
+    </details>
+    <button class="back" type="button" data-goto="1">رجوع للخطوة الأولى</button>
+  </section>
+
+  <section data-step="3">
+    <img class="app-icon" src="icon.png" width="96" height="96" alt="أيقونة كابتن">
+    <h1>نزّل كابتن</h1>
+    <p class="lead">الزر يفتح متجر Google Play على صفحة كابتن. اضغط <b>«تثبيت»</b>.</p>
+    <a class="go" id="install" data-next="4" href="https://play.google.com/store/apps/details?id=com.captain.football">نزّل من Google Play</a>
+    <p class="after">بعد التثبيت ارجع لهنا للخطوة الأخيرة.</p>
+    <details>
+      <summary>المتجر يگول التطبيق مو متاح</summary>
+      <p>جوجل ياخذ كم دقيقة حتى يفعّل التجربة لحسابك. انتظر شوية واضغط الزر مرة ثانية.</p>
+    </details>
+    <button class="back" type="button" data-goto="2">رجوع للخطوة الثانية</button>
+  </section>
+
+  <section data-step="4">
+    <div class="done-mark" aria-hidden="true">
+      <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#1F133B" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+    </div>
+    <h1 style="margin-top:18px">افتح كابتن وادخل</h1>
+    <p class="lead">اضغط <b>«الدخول بحساب Google»</b> بنفس الحساب. لا رمز ولا كلمة مرور، ورقمك ينطلب بس من تحجز أول مرة.</p>
+    <div class="note">
+      <p><b>خلّيه بهاتفك ١٤ يوم.</b> جوجل ما يخلّي تطبيق جديد ينزل للكل إلا إذا جرّبوه ناس ١٤ يوم ورا بعض. افتحه كم مرة: شوف الملاعب، سوّي فريقك، جرّب حجز.</p>
+      <p><b>لقيت مشكلة؟</b> راسلنا على أي حساب من حساباتنا، أو على <a href="mailto:captainappofficial@gmail.com">captainappofficial@gmail.com</a>، ويا صورة للشاشة إذا تگدر.</p>
+    </div>
+    <a class="go" id="install-again" href="https://play.google.com/store/apps/details?id=com.captain.football" style="background:var(--soft);box-shadow:none;color:var(--ink);font-size:17px">ما نزل؟ افتح Google Play مرة ثانية</a>
+    <button class="back" type="button" data-goto="1">ابدأ من الأول</button>
+  </section>
 </main>
+<script>
+(function () {
+  var KEY = "captain-join-step";
+  var ua = navigator.userAgent || "";
+  var android = /Android/i.test(ua);
+  var iphone = /iPhone|iPad|iPod/i.test(ua);
+  // apps' own browsers: Facebook, Messenger, Instagram, TikTok, Snapchat, X, LINE, and Android WebViews ("; wv)")
+  var inApp = /FBAN|FBAV|FB_IAB|FBIOS|Instagram|musical_ly|TikTok|Bytedance|Snapchat|Twitter|Line\/|; wv\)/i.test(ua);
+  var PLAY = "https://play.google.com/store/apps/details?id=com.captain.football";
+
+  function read() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
+  function save(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
+
+  if (android) {
+    // opens the Play Store app itself; the browser falls back to the web page if the store is missing
+    var market = "intent://details?id=com.captain.football#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=" + encodeURIComponent(PLAY) + ";end";
+    document.getElementById("install").href = market;
+    document.getElementById("install-again").href = market;
+    document.getElementById("open-chrome").href = "intent://itsm0000.github.io/captain-legal/join/#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(location.href) + ";end";
+  }
+
+  var shown = null;
+  function show(step) {
+    shown = String(step);
+    var sections = document.querySelectorAll("section");
+    for (var i = 0; i < sections.length; i++) sections[i].classList.toggle("show", sections[i].getAttribute("data-step") === shown);
+    var n = Number(shown) || 0;
+    var bars = document.querySelectorAll(".progress span");
+    for (var j = 0; j < bars.length; j++) bars[j].classList.toggle("on", j < n);
+    document.getElementById("count").textContent = n ? "الخطوة " + "١٢٣٤".charAt(n - 1) + " من ٤" : "";
+    window.scrollTo(0, 0);
+  }
+
+  function stored() {
+    var s = read();
+    return s === "2" || s === "3" || s === "4" ? s : "1";
+  }
+
+  // "carry on anyway" from the Chrome or iPhone screen is remembered for this visit
+  function forced() { try { return sessionStorage.getItem("captain-join-forced") === "1"; } catch (e) { return false; } }
+
+  function start() {
+    if (!forced() && inApp && !iphone) return show("browser");
+    if (!forced() && iphone) return show("iphone");
+    show(stored());
+  }
+
+  // a step's button saves the next step before leaving; coming back to this tab shows it
+  var leftFor = null;
+  document.addEventListener("click", function (e) {
+    var go = e.target.closest ? e.target.closest("[data-next]") : null;
+    if (go) { leftFor = go.getAttribute("data-next"); save(leftFor); return; }
+    var back = e.target.closest ? e.target.closest("[data-goto]") : null;
+    if (back) {
+      var to = back.getAttribute("data-goto");
+      if (to === "resume") { try { sessionStorage.setItem("captain-join-forced", "1"); } catch (err) {} to = stored(); }
+      save(to);
+      show(to);
+    }
+  });
+  function cameBack() {
+    if (document.visibilityState === "visible" && leftFor && leftFor !== shown) { show(leftFor); leftFor = null; }
+  }
+  document.addEventListener("visibilitychange", cameBack);
+  window.addEventListener("focus", cameBack);
+  // back from a page opened in this same tab: the browser may restore this page as it was
+  window.addEventListener("pageshow", function (e) { if (e.persisted) { var s = stored(); if (s !== shown && shown !== "browser" && shown !== "iphone") show(s); } });
+
+  start();
+})();
+</script>
 </body>
 </html>
