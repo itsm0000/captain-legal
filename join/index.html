@@ -141,16 +141,50 @@
   function read() { try { return localStorage.getItem(KEY); } catch (e) { return null; } }
   function save(v) { try { localStorage.setItem(KEY, v); } catch (e) {} }
 
+  // The visit counter (supabase/migrations/20261126000000_join_page_counter.sql): a random visit id,
+  // the link's ?src= tag, which app's browser this is, the phone kind and the event. Nothing else.
+  // The address and key are public by design (docs/shop/config.js); scripts/legal-site.mjs swaps them
+  // for captain-test with --backend test.
+  var COUNTER = { url: "https://nzkbhyhmsscvvqhqdsdg.supabase.co", key: "sb_publishable_GmAUAD5k5AD3gExaKqfW-Q_PNRVX2kF" };
+  var params = new URLSearchParams(location.search);
+  function keep(name, fromLink, pattern, make) {
+    var v = fromLink && pattern.test(fromLink) ? fromLink : null;
+    try { v = v || localStorage.getItem(name); } catch (e) {}
+    v = v || make();
+    try { localStorage.setItem(name, v); } catch (e) {}
+    return v;
+  }
+  var visit = keep("captain-join-visit", params.get("v"), /^[a-z0-9]{8,32}$/, function () {
+    var s = ""; for (var k = 0; k < 16; k++) s += "abcdefghijklmnopqrstuvwxyz0123456789".charAt(Math.floor(Math.random() * 36)); return s;
+  });
+  var src = keep("captain-join-src", params.get("src") && params.get("src").toLowerCase(), /^[a-z0-9_-]{1,32}$/, function () { return "direct"; });
+  var openedIn = /musical_ly|TikTok|Bytedance/i.test(ua) ? "tiktok" : /Instagram/i.test(ua) ? "instagram" : /FBAN|FBAV|FB_IAB|FBIOS/i.test(ua) ? "facebook" : inApp ? "other_app" : "browser";
+  var phone = android ? "android" : iphone ? "iphone" : "other";
+  function count(event) {
+    try {
+      fetch(COUNTER.url + "/rest/v1/rpc/log_join_event", {
+        method: "POST",
+        keepalive: true,
+        headers: { "Content-Type": "application/json", apikey: COUNTER.key, Authorization: "Bearer " + COUNTER.key },
+        body: JSON.stringify({ p_visit: visit, p_src: src, p_event: event, p_opened_in: openedIn, p_phone: phone }),
+      }).catch(function () {});
+    } catch (e) {}
+  }
+  var TAPS = { "open-chrome": "tap_chrome", install: "tap_install", "install-again": "tap_install_again" };
+
   if (android) {
     // opens the Play Store app itself; the browser falls back to the web page if the store is missing
     var market = "intent://details?id=com.captain.football#Intent;scheme=market;package=com.android.vending;S.browser_fallback_url=" + encodeURIComponent(PLAY) + ";end";
     document.getElementById("install").href = market;
     document.getElementById("install-again").href = market;
-    document.getElementById("open-chrome").href = "intent://itsm0000.github.io/captain-legal/join/#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(location.href) + ";end";
+    // Chrome gets this visit's id and source, so the counter sees one visit, not two
+    var carry = "?src=" + encodeURIComponent(src) + "&v=" + visit;
+    document.getElementById("open-chrome").href = "intent://itsm0000.github.io/captain-legal/join/" + carry + "#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(location.origin + location.pathname + carry) + ";end";
   }
 
   var shown = null;
   function show(step) {
+    if (String(step) !== shown) count("show_" + step);
     shown = String(step);
     var sections = document.querySelectorAll("section");
     for (var i = 0; i < sections.length; i++) sections[i].classList.toggle("show", sections[i].getAttribute("data-step") === shown);
@@ -178,12 +212,18 @@
   // a step's button saves the next step before leaving; coming back to this tab shows it
   var leftFor = null;
   document.addEventListener("click", function (e) {
+    var link = e.target.closest ? e.target.closest("a") : null;
+    if (link) {
+      var href = link.getAttribute("href") || "";
+      var tap = TAPS[link.id] || (/groups\.google/.test(href) ? "tap_group" : /apps\/testing/.test(href) ? "tap_optin" : null);
+      if (tap) count(tap);
+    }
     var go = e.target.closest ? e.target.closest("[data-next]") : null;
     if (go) { leftFor = go.getAttribute("data-next"); save(leftFor); return; }
     var back = e.target.closest ? e.target.closest("[data-goto]") : null;
     if (back) {
       var to = back.getAttribute("data-goto");
-      if (to === "resume") { try { sessionStorage.setItem("captain-join-forced", "1"); } catch (err) {} to = stored(); }
+      if (to === "resume") { count("tap_resume"); try { sessionStorage.setItem("captain-join-forced", "1"); } catch (err) {} to = stored(); }
       save(to);
       show(to);
     }
@@ -196,6 +236,7 @@
   // back from a page opened in this same tab: the browser may restore this page as it was
   window.addEventListener("pageshow", function (e) { if (e.persisted) { var s = stored(); if (s !== shown && shown !== "browser" && shown !== "iphone") show(s); } });
 
+  count("view");
   start();
 })();
 </script>
