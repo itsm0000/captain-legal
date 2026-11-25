@@ -1,20 +1,23 @@
 // @ts-check
 /**
- * متجر كابتن (docs/release/ROUND_2_12.md §4 and §13). A static page: it signs in with the code the
- * sign-in function sends on WhatsApp, reads what is sold (shop_catalogue) and what the account has
+ * متجر كابتن (docs/release/ROUND_2_12.md §4 and §13). A static page: it signs in with the Google
+ * account the player uses in the app (Google's button on CAPTAIN's Firebase address, firebase/public/google,
+ * then the token traded here at Supabase Auth as the app trades it; docs/release/GOOGLE_SIGN_IN.md),
+ * or, behind WHATSAPP_SIGN_IN, with the code the
+ * sign-in function sends on WhatsApp. It reads what is sold (shop_catalogue) and what the account has
  * (shop_state, or /pay/state when something is waiting on the gateway), and opens ZainCash through
  * /pay/start. The server decides every amount and every grant; the page sends only what to buy.
  * A buyer coming back from ZainCash is never believed: the page asks the server, which asks ZainCash.
  *
  * Everything the server sends is put on the page as text, never as markup.
  */
-import { BACKEND, CONTACT } from "./config.js";
+import { BACKEND, CONTACT, GOOGLE_PAGE } from "./config.js";
 import * as L from "./logic.js";
 
 const SESSION_KEY = "captain-shop-session";
 const FN = `${BACKEND.url}/functions/v1/sign-in`;
 
-/** @typedef {{ accessToken: string, refreshToken: string, expiresAt: number, phone: string }} Session */
+/** @typedef {{ accessToken: string, refreshToken: string, expiresAt: number, phone: string, email: string }} Session */
 
 const page = {
   /** @type {Session | null} */ session: null,
@@ -26,6 +29,8 @@ const page = {
   /** @type {string | null} */ serverTrouble: null,
   /** @type {string | null} */ accountTrouble: null,
   signin: { step: "phone", phone: "", retryUntil: 0, busy: false, error: "" },
+  /** On the way to Google's page, or trading the token it handed back. */
+  google: { busy: false },
   returned: L.returnedPayment(location.search),
   forVenue: L.openedForVenue(location.search),
   checking: false,
@@ -279,7 +284,13 @@ function toSession(data) {
   if (!data || typeof data.access_token !== "string" || typeof data.refresh_token !== "string") throw new Trouble("SERVER_ERROR");
   const phone = typeof data.user?.phone === "string" ? data.user.phone : "";
   const lifetime = typeof data.expires_in === "number" ? data.expires_in : 3600;
-  return { accessToken: data.access_token, refreshToken: data.refresh_token, expiresAt: Date.now() + lifetime * 1000, phone: phone.startsWith("+") ? phone : `+${phone}` };
+  return {
+    accessToken: data.access_token,
+    refreshToken: data.refresh_token,
+    expiresAt: Date.now() + lifetime * 1000,
+    phone: !phone ? "" : phone.startsWith("+") ? phone : `+${phone}`,
+    email: L.googleEmail(data.user),
+  };
 }
 
 /** A token that will last the next call, renewed first when it is about to run out. */
@@ -364,7 +375,93 @@ async function refreshAccount() {
   }
 }
 
-// ───────────────────────────── Signing in ─────────────────────────────
+// ───────────────────────────── Signing in with Google ─────────────────────────────
+
+/** What this tab keeps while the buyer is on Google's page: the raw nonce, and the address to restore. */
+const GOOGLE_KEY = "captain-shop-google";
+
+/**
+ * Goes to Google's page on CAPTAIN's Firebase address (firebase/public/google), the one browser
+ * origin the Google client trusts. Only the nonce's hash leaves this tab; the raw nonce waits here.
+ */
+async function goToGoogle() {
+  page.signin.error = "";
+  page.google.busy = true;
+  renderSignin();
+  const nonce = await L.makeNonce();
+  try {
+    sessionStorage.setItem(GOOGLE_KEY, JSON.stringify({ raw: nonce.raw, search: location.search }));
+  } catch {
+    page.google.busy = false;
+    page.signin.error = L.errorWords("GOOGLE_RETRY");
+    return renderSignin();
+  }
+  location.assign(L.googlePageAddress(GOOGLE_PAGE, nonce.hashed, location.origin + location.pathname));
+}
+
+/**
+ * The token Google's page handed back in the fragment, with the raw nonce this tab kept for it.
+ * The fragment leaves the address bar at once. Null when the page was not opened that way.
+ * @returns {{ credential: string, raw: string } | null}
+ */
+function takeGoogleHandoff() {
+  const credential = L.handedToken(location.hash);
+  if (credential === null) return null;
+  let kept = null;
+  try {
+    kept = JSON.parse(sessionStorage.getItem(GOOGLE_KEY) ?? "null");
+    sessionStorage.removeItem(GOOGLE_KEY);
+  } catch {
+    kept = null;
+  }
+  const search = typeof kept?.search === "string" && kept.search.startsWith("?") ? kept.search : "";
+  history.replaceState(null, "", location.pathname + search);
+  page.returned = L.returnedPayment(search);
+  page.forVenue = L.openedForVenue(search);
+  return { credential, raw: typeof kept?.raw === "string" ? kept.raw : "" };
+}
+
+/**
+ * Trades Google's token at Supabase Auth for a session, as the app does. A Google account with no
+ * CAPTAIN account is told to sign up in the app, and the empty account Supabase Auth made for it is
+ * forgotten at once, so the same Google account can still be linked to a number account in حسابي
+ * (supabase/migrations/20261125100000_shop_forgets_unused_google.sql).
+ * @param {{ credential: string, raw: string }} handed
+ */
+async function signInWithGoogle(handed) {
+  page.signin.error = "";
+  page.google.busy = true;
+  renderSignin();
+  try {
+    if (!handed.raw) throw new Trouble("GOOGLE_RETRY");
+    const result = await api("/auth/v1/token?grant_type=id_token", { body: { provider: "google", id_token: handed.credential, nonce: handed.raw } });
+    if (!result.ok) throw new Trouble(L.googleRefusal(result.status, result.data));
+    const session = toSession(result.data);
+    saveSession(session);
+    await refreshAccount();
+    if (page.accountTrouble === "NOT_SIGNED_IN") {
+      await api("/rest/v1/rpc/forget_unused_google_account", { token: session.accessToken }).catch(() => null);
+      saveSession(null);
+      page.account = null;
+      page.accountTrouble = null;
+      page.signin.error = L.errorWords("GOOGLE_NO_ACCOUNT");
+    }
+  } catch (error) {
+    page.signin.error = L.errorWords(error instanceof Trouble ? error.code : "SERVER_ERROR");
+  }
+  page.google.busy = false;
+}
+
+/** Google's "G", drawn as Google's sign-in guidelines ask for a button of one's own. */
+function googleMark() {
+  return s("svg", { viewBox: "0 0 48 48", class: "icon", "aria-hidden": "true" },
+    s("path", { fill: "#EA4335", d: "M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" }),
+    s("path", { fill: "#4285F4", d: "M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" }),
+    s("path", { fill: "#FBBC05", d: "M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" }),
+    s("path", { fill: "#34A853", d: "M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" }));
+}
+
+// ───────────────────────────── Signing in with a WhatsApp code ─────────────────────────────
 
 async function sendCode(event) {
   event.preventDefault();
@@ -441,11 +538,26 @@ function renderSignin() {
   if (page.session) return;
   clearInterval(ticker);
   box.replaceChildren();
-  const busy = page.signin.busy;
   box.append(
-    h("h2", {}, icon("message"), page.forVenue ? "سجّل دخولك لتدفع رصيد ملاعبك" : "سجّل دخولك برقم حسابك في كابتن"),
-    h("p", { class: "sub" }, "يصلك رمز من 6 أرقام على واتساب، وقد يصل عبر تيليغرام أو رسالة نصية إن تعذّر واتساب. استخدم الرقم نفسه الذي تدخل به التطبيق."),
+    h("h2", {}, icon("lock"), page.forVenue ? "ادخل بحساب Google لتدفع رصيد ملاعبك" : "الدخول بحساب Google"),
+    h("p", { class: "sub" }, "ادخل بحساب Google نفسه الذي تدخل به تطبيق كابتن، فتظهر لك مشترياتك ويصل ما تشتريه إلى حسابك."),
   );
+  const busy = page.google.busy;
+  box.append(
+    h("button", { id: "google-button", class: "btn google", type: "button", onclick: goToGoogle, disabled: busy }, busy ? icon("loader", "icon spin") : googleMark(), "الدخول بحساب Google"),
+    h("p", { class: "error", role: "alert" }, page.signin.error),
+  );
+  if (L.WHATSAPP_SIGN_IN) {
+    const other = h("details", { class: "other-way", open: page.signin.step === "code" }, h("summary", {}, icon("message"), "أو ادخل برمز يصلك على واتساب"));
+    box.append(other);
+    renderCodeSignin(other);
+  }
+}
+
+/** The WhatsApp code, under the Google button while WHATSAPP_SIGN_IN is on. @param {HTMLElement} box */
+function renderCodeSignin(box) {
+  const busy = page.signin.busy;
+  box.append(h("p", { class: "sub" }, "يصلك رمز من 6 أرقام على واتساب، وقد يصل عبر تيليغرام أو رسالة نصية إن تعذّر واتساب. استخدم الرقم نفسه الذي تدخل به التطبيق."));
   if (page.otpAvailable === false) {
     box.append(banner("warn", "alert", "تسجيل الدخول غير متاح الآن", "لا يمكن إرسال رموز الدخول في هذه اللحظة. حاول مرة أخرى لاحقاً."));
     return;
@@ -456,7 +568,6 @@ function renderSignin() {
         h("div", { class: "field" },
           h("label", { for: "otp-phone" }, "رقم الهاتف"),
           h("input", { id: "otp-phone", name: "phone", type: "tel", inputmode: "tel", autocomplete: "tel", placeholder: "0770 123 4567", required: true, disabled: busy })),
-        h("p", { class: "error", role: "alert" }, page.signin.error),
         h("button", { class: "btn", type: "submit", disabled: busy }, busy ? icon("loader", "icon spin") : null, "أرسل الرمز")),
     );
     return;
@@ -475,7 +586,6 @@ function renderSignin() {
       h("div", { class: "field" },
         h("label", { for: "otp-code" }, "الرمز"),
         h("input", { id: "otp-code", name: "code", type: "text", inputmode: "numeric", autocomplete: "one-time-code", maxlength: 6, placeholder: "••••••", required: true, disabled: busy })),
-      h("p", { class: "error", role: "alert" }, page.signin.error),
       h("div", { class: "row" }, h("button", { class: "btn", type: "submit", disabled: busy }, busy ? icon("loader", "icon spin") : null, "دخول"), again, h("span", { class: "hint" }, wait))),
   );
   tick();
@@ -576,7 +686,7 @@ function askToBuy(what) {
  */
 function buyButton(what, stop) {
   if (stop === "TRYING") return h("span", { class: "state trying" }, icon("sparkles"), "مجاني خلال التجربة");
-  if (!page.session) return h("button", { class: "btn ghost full", type: "button", onclick: toSignin }, icon("lock"), "سجّل دخولك");
+  if (!page.session) return h("button", { class: "btn ghost full", type: "button", onclick: toSignin }, icon("lock"), "ادخل لتشتري");
   if (stop === "ALREADY_OWNED") return h("span", { class: "state ok" }, icon("check"), "في حسابك");
   if (stop) return h("button", { class: "btn ghost full", type: "button", disabled: true, title: L.errorWords(stop) }, stop === "MONTHLY_CAP" ? "يتجاوز حدّك الشهري" : stop === "PLAN_SMALLER" ? "أصغر من باقتك الحالية" : "غير متاح");
   if (page.payAvailable !== true) return h("button", { class: "btn ghost full", type: "button", disabled: true }, "الدفع غير متاح بعد");
@@ -586,7 +696,7 @@ function buyButton(what, stop) {
 function toSignin() {
   const box = document.querySelector("#signin");
   box?.scrollIntoView({ behavior: "smooth", block: "center" });
-  /** @type {HTMLInputElement | null} */ (document.querySelector("#otp-phone"))?.focus();
+  /** @type {HTMLButtonElement | null} */ (document.querySelector("#google-button"))?.focus({ preventScroll: true });
 }
 
 // ───────────────────────────── The page ─────────────────────────────
@@ -601,7 +711,7 @@ function renderChip() {
   slot.replaceChildren();
   if (!page.session) return;
   const name = page.account?.name ? String(page.account.name) : "";
-  slot.append(h("div", { class: "chip" }, h("span", { class: "who" }, name ? `${name} · ` : "", h("span", { class: "ltr" }, L.formatPhone(page.session.phone))), h("button", { type: "button", onclick: signOut }, "خروج")));
+  slot.append(h("div", { class: "chip" }, h("span", { class: "who" }, name ? `${name} · ` : "", h("span", { class: "ltr" }, page.session.email || L.formatPhone(page.session.phone))), h("button", { type: "button", onclick: signOut }, "خروج")));
 }
 
 function renderBanner() {
@@ -623,7 +733,7 @@ function renderReturned() {
   box.replaceChildren();
   if (!page.returned) return;
   if (!page.session) {
-    box.append(banner("wait", "info", "عدت من زين كاش", "سجّل دخولك برقمك لنتحقق من عمليتك مع زين كاش."));
+    box.append(banner("wait", "info", "عدت من زين كاش", "ادخل بحسابك لنتحقق من عمليتك مع زين كاش."));
     return;
   }
   if (!page.account) return;
@@ -703,7 +813,7 @@ function renderShelf() {
     return;
   }
   box.append(h("ol", { class: "steps" },
-    h("li", {}, "سجّل دخولك برقم حسابك في كابتن."),
+    h("li", {}, "ادخل بحساب Google الذي تدخل به تطبيق كابتن."),
     h("li", {}, "اختر ما يعجبك وادفع عبر زين كاش."),
     h("li", {}, "تجده في تطبيق كابتن بعد تأكيد الدفع.")));
   for (const group of groups) {
@@ -755,15 +865,18 @@ async function start() {
     contact.setAttribute("href", `mailto:${CONTACT}`);
     contact.textContent = CONTACT;
   }
-  page.session = loadSession();
+  const handed = takeGoogleHandoff();
+  page.session = handed ? null : loadSession();
+  if (handed) page.google.busy = true;
   render();
-  const [catalogue, otp, pay, sets] = await Promise.allSettled([readCatalogue(), available("/otp/available"), available("/pay/available"), readSets()]);
+  const [catalogue, otp, pay, sets] = await Promise.allSettled([readCatalogue(), L.WHATSAPP_SIGN_IN ? available("/otp/available") : Promise.resolve(false), available("/pay/available"), readSets()]);
   page.trying = sets.status === "fulfilled" ? sets.value : [];
   if (catalogue.status === "fulfilled") page.catalogue = catalogue.value;
   else page.serverTrouble = catalogue.reason instanceof Trouble ? catalogue.reason.code : "SERVER_ERROR";
   page.otpAvailable = otp.status === "fulfilled" ? otp.value : null;
   page.payAvailable = pay.status === "fulfilled" ? pay.value : null;
-  if (page.session) await refreshAccount();
+  if (handed) await signInWithGoogle(handed);
+  else if (page.session) await refreshAccount();
   render();
   // The hint stays in memory until the buyer has signed in; a reload should not show the note again.
   if (page.returned) {

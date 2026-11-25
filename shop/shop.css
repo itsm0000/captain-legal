@@ -191,3 +191,12 @@ dialog::backdrop { background: rgba(15, 23, 42, 0.55); }
   #shelf .grid.sets { grid-template-columns: 1fr 1fr; gap: 10px; }
   .art.media { height: auto; }
 }
+
+/* «الدخول بحساب Google»: a button of the page's own, white as Google's guidelines show it. */
+.btn.google { background: #fff; color: #1F1F1F; border-color: #747775; min-width: 240px; }
+.btn.google:hover:not(:disabled) { background: #F2F2F2; }
+.btn.google .icon { width: 20px; height: 20px; }
+#google-button + .error { margin-top: 10px; }
+.other-way { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.other-way summary { cursor: pointer; font-weight: 600; font-size: 14px; color: var(--ink-soft); display: flex; align-items: center; gap: 8px; }
+.other-way[open] summary { margin-bottom: 10px; }

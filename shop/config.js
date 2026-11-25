@@ -12,4 +12,11 @@ export const BACKEND = Object.freeze({
   key: "sb_publishable_GmAUAD5k5AD3gExaKqfW-Q_PNRVX2kF",
 });
 
+/**
+ * Google's button for this page, on CAPTAIN's Firebase address (firebase/public/google). The Google
+ * Web client the app uses trusts that origin and not this one, so the button lives there and hands
+ * the token back here (docs/release/GOOGLE_SIGN_IN.md, "The website").
+ */
+export const GOOGLE_PAGE = "https://captain-4e7e5.firebaseapp.com/google/";
+
 export const CONTACT = "captainappofficial@gmail.com";

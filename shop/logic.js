@@ -75,6 +75,10 @@ export const ERRORS = Object.freeze({
   NOTHING_DUE: "لا يوجد مبلغ مستحق على ملاعبك الآن.",
   PAYMENT_UNAVAILABLE: "الدفع غير متاح بعد. سيظهر هنا عند تفعيل الدفع عبر زين كاش.",
   NOT_SIGNED_IN: "لا يوجد حساب في كابتن بهذا الرقم. أنشئ حسابك في تطبيق كابتن أولاً، ثم عد إلى هنا.",
+  GOOGLE_NO_ACCOUNT: "لا يوجد حساب في كابتن مربوط بحساب Google هذا. إن كنت تدخل التطبيق برقم هاتفك، فافتح التطبيق ثم «حسابي» ثم «اربط حساب Google»، وعد إلى هنا. وإن لم يكن عندك حساب، فأنشئه في تطبيق كابتن أولاً.",
+  GOOGLE_REJECTED: "لم نتمكن من الدخول بحساب Google هذا. حاول مرة أخرى بعد قليل.",
+  GOOGLE_UNAVAILABLE: "الدخول بحساب Google غير متاح الآن. حاول مرة أخرى لاحقاً.",
+  GOOGLE_RETRY: "لم تكتمل محاولة الدخول بحساب Google. اضغط «الدخول بحساب Google» مرة أخرى من هذه الصفحة.",
   TERMS_REQUIRED: "افتح تطبيق كابتن ووافق على شروط الاستخدام الجديدة، ثم عد إلى هنا.",
   ACCOUNT_SUSPENDED: "حسابك موقوف لمخالفة شروط الاستخدام، فلا يمكن الشراء به الآن.",
   STORE_NOT_FOUND: "لا يوجد متجر باسم حسابك. افتح متجرك في تطبيق كابتن أولاً.",
@@ -84,6 +88,78 @@ export const ERRORS = Object.freeze({
   SERVER_ERROR: "تعذّر الوصول إلى خادم كابتن الآن. حاول بعد قليل.",
   BAD_PAY_URL: "وصل عنوان دفع غير متوقع، فلم نفتحه. حاول مرة أخرى بعد قليل، وإن تكرر فراسلنا.",
 });
+
+/**
+ * The WhatsApp code (the sign-in function's /otp routes) as a second way in. Off since Google
+ * sign-in (25 November 2026): OTPIQ is in trial mode and sends no codes to players, so a form
+ * that promises one would only mislead. Its code stays, and turning this on brings it back
+ * under the Google button.
+ */
+export const WHATSAPP_SIGN_IN = false;
+
+/**
+ * Why Supabase Auth refused Google's token, as the app reads it (googleFailure in
+ * apps/mobile/lib/server/api.ts): Google sign-in switched off for the project, or the token refused.
+ * @param {number} status @param {any} data @returns {"SERVER_ERROR" | "GOOGLE_UNAVAILABLE" | "GOOGLE_REJECTED"}
+ */
+export function googleRefusal(status, data) {
+  if (status >= 500) return "SERVER_ERROR";
+  const code = typeof data?.error_code === "string" ? data.error_code : typeof data?.code === "string" ? data.code : "";
+  const message = [data?.msg, data?.message, data?.error_description].filter((part) => typeof part === "string").join(" ");
+  if (code === "provider_disabled" || /not enabled|disabled/i.test(message)) return "GOOGLE_UNAVAILABLE";
+  return "GOOGLE_REJECTED";
+}
+
+/**
+ * A fresh nonce and its SHA-256 in hex. Google writes the hash into the token it issues; Supabase
+ * Auth hashes the raw one the page sends and refuses a token whose nonce does not match, so a
+ * token taken from another page cannot be replayed here.
+ * @returns {Promise<{ raw: string, hashed: string }>}
+ */
+export async function makeNonce() {
+  const bytes = crypto.getRandomValues(new Uint8Array(32));
+  const raw = [...bytes].map((b) => b.toString(16).padStart(2, "0")).join("");
+  return { raw, hashed: await sha256Hex(raw) };
+}
+
+/** @param {string} text */
+export async function sha256Hex(text) {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+/**
+ * Google's page on CAPTAIN's Firebase address, asked for a token bound to this nonce hash and told
+ * where to come back (it goes back only to a shop it knows: firebase/public/google/rules.js).
+ * @param {string} googlePage @param {string} hashedNonce @param {string} back
+ */
+export function googlePageAddress(googlePage, hashedNonce, back) {
+  const url = new URL(googlePage);
+  url.search = new URLSearchParams({ n: hashedNonce, back }).toString();
+  return url.toString();
+}
+
+/** The token Google's page handed back in the fragment (#google=…), or null. @param {unknown} hash */
+export function handedToken(hash) {
+  const text = String(hash ?? "");
+  if (!text.startsWith("#google=")) return null;
+  let token = "";
+  try {
+    token = decodeURIComponent(text.slice("#google=".length));
+  } catch {
+    return null;
+  }
+  return /^[\w-]+\.[\w-]+\.[\w-]+$/.test(token) ? token : null;
+}
+
+/** The Google account's address on a session from Supabase Auth, or "" when it has none. @param {any} user */
+export function googleEmail(user) {
+  const identities = Array.isArray(user?.identities) ? user.identities : [];
+  const google = identities.find((/** @type {any} */ i) => i?.provider === "google");
+  if (!google) return "";
+  const email = google.identity_data?.email ?? user?.email;
+  return typeof email === "string" ? email : "";
+}
 
 /** @param {string} code @returns {string} */
 export const errorWords = (code) => ERRORS[/** @type {keyof typeof ERRORS} */ (code)] ?? ERRORS.SERVER_ERROR;
@@ -246,7 +322,7 @@ export function paymentSubject(payment, catalogue) {
 /** What the page tells a buyer who came back from the gateway, read from the server's own list. */
 /** @param {any} payment @returns {{ tone: "ok" | "wait" | "warn", text: string }} */
 export function returnNote(payment) {
-  if (!payment) return { tone: "warn", text: "لم نجد هذه العملية في حسابك. إن كنت دفعت من رقم آخر فسجّل دخولك به." };
+  if (!payment) return { tone: "warn", text: "لم نجد هذه العملية في حسابك. إن كنت دفعت وأنت داخل بحساب آخر، فاخرج وادخل به." };
   if (payment.status === "paid") return { tone: "ok", text: "تم الدفع، وأصبح ما اشتريته في حسابك. افتح تطبيق كابتن لتجده." };
   if (payment.status === "pending" || payment.status === "created")
     return { tone: "wait", text: "لم يؤكد زين كاش الدفع بعد. إن كنت أكملت الدفع فانتظر قليلاً ثم اضغط «تحقّق مرة أخرى»." };
