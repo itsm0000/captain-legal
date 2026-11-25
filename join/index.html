@@ -32,20 +32,22 @@
   .back { margin-top: auto; padding-top: 24px; background: none; border: 0; color: var(--muted); font: inherit; font-size: 15px; text-decoration: underline; cursor: pointer; }
   a { color: var(--gold); }
   [lang="en"] { direction: ltr; unicode-bidi: isolate; white-space: nowrap; }
-  /* the Google Groups page, drawn: the real page shows only after the tester signs in */
-  .groups { padding: 14px 16px 18px; text-align: start; direction: ltr; font-family: Roboto, Arial, sans-serif; color: #1F1F1F; background: #FFFFFF; }
-  .groups .bar { display: flex; align-items: center; gap: 10px; font-size: 18px; color: #444746; }
-  .groups .bar svg { flex: none; }
-  .groups .title { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; }
-  .groups .name { font-size: 18px; }
-  .groups .join { flex: none; padding: 7px 16px; border-radius: 20px; background: var(--blue); color: #FFFFFF; font-size: 14px; font-weight: 500; outline: 4px solid #F2C94C; outline-offset: 4px; }
-  .groups .empty { margin-top: 18px; height: 54px; border-radius: 10px; background: #F1F3F4; }
   .app-icon { display: block; margin: 8px auto 18px; border-radius: 22px; box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
   .done-mark { margin: 26px auto 0; width: 84px; height: 84px; border-radius: 50%; background: var(--gold-bg); display: grid; place-items: center; }
   .note { margin-top: 22px; text-align: start; color: var(--muted); font-size: 15px; }
   .note p { margin: 0; }
   .note p + p { margin-top: 8px; }
   .note b { color: var(--ink); }
+  .must { margin: 10px auto 0; padding: 8px 14px; border-radius: 12px; background: #FDECEC; color: #B42318; font-size: 15px; font-weight: 700; }
+  .note-box, .warn-box { margin-top: 18px; text-align: start; border-radius: 14px; padding: 12px 16px; font-size: 15px; }
+  .note-box { background: var(--card); border: 2px solid var(--gold-bg); color: var(--muted); }
+  .warn-box { background: #FDECEC; border: 2px solid #F4B4B4; color: #6B1D1D; }
+  .note-box p, .warn-box p { margin: 0; }
+  .note-box p + p, .warn-box p + p { margin-top: 8px; }
+  .note-box b { color: var(--ink); }
+  .warn-box b { color: #B42318; }
+  .back-strong { margin-top: 10px; padding: 10px 16px; border: 0; border-radius: 12px; background: #B42318; color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+  @media (prefers-color-scheme: dark) { .must, .warn-box { background: #3A1A1F; color: #FFD7D7; } .warn-box { border-color: #7A2E36; } .warn-box b { color: #FF9C9C; } }
 </style>
 </head>
 <body>
@@ -74,24 +76,15 @@
 
   <section data-step="1">
     <h1>انضم لمجموعة المجرّبين</h1>
-    <p class="lead">بنفس حساب Gmail اللي بـ Google Play. اضغط <b>«<span lang="en">Join group</span>»</b> أو <b>«الانضمام إلى المجموعة»</b> فوگ الصفحة، وبعدها ارجع هنا.</p>
-    <div class="pic" aria-hidden="true">
-      <div class="groups">
-        <div class="bar">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#444746" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
-          <span>Groups</span>
-        </div>
-        <div class="title"><span class="name">CAPTAIN testers</span><span class="join">Join group</span></div>
-        <div class="empty"></div>
-      </div>
+    <p class="must">أهم خطوة، لا تتخطاها. بدونها جوجل يگولك التطبيق مو متاح.</p>
+    <p class="lead">بنفس حساب Gmail اللي بـ Google Play. اضغط الزر الصغير <b>«الانضمام إلى المجموعة»</b> (أو <b>«<span lang="en">Join group</span>»</b>) اللي يم <b>CAPTAIN testers</b> فوگ.</p>
+    <div class="pic"><img src="group-join.jpg" width="600" height="570" alt="صفحة مجموعة CAPTAIN testers بجوجل: زر «الانضمام إلى المجموعة» فوگ يسار، وتحته رسالة «ليس لديك إذن للوصول إلى هذا المحتوى»"></div>
+    <div class="note-box">
+      <p><b>«ليس لديك إذن للوصول إلى هذا المحتوى» عادية.</b> تطلع لكل واحد قبل ما ينضم. لا توكف عندها، اضغط الزر اللي فوگها.</p>
+      <p>بعد ما تنضم تطلعلك <b>«لا توجد محادثات بعد»</b> أو «<span lang="en">No conversations yet</span>»، يعني انضميت.</p>
     </div>
     <a class="go" data-next="2" target="_blank" rel="noopener" href="https://groups.google.com/g/captain-testers">افتح المجموعة</a>
-    <p class="after">بعد ما تنضم، ارجع لهنا وتطلعلك الخطوة الجاية.</p>
-    <details>
-      <summary>طلعتلي رسالة «ليس لديك إذن» أو «ماكو محادثات»</summary>
-      <p>عادي، المجموعة بلا محادثات. إذا شفت «<span lang="en">No conversations yet</span>» يعني انضميت. ارجع لهنا.</p>
-      <p>محد يشوف بريدك غيرنا.</p>
-    </details>
+    <p class="after">بعد ما تنضم، ارجع لهنا وتطلعلك الخطوة الجاية. محد يشوف بريدك غيرنا.</p>
   </section>
 
   <section data-step="2">
@@ -100,11 +93,11 @@
     <div class="pic"><img src="become-tester.jpg" width="600" height="428" alt="صفحة Google Play للتجربة، والزر الأزرق Become a tester بآخرها"></div>
     <a class="go" data-next="3" target="_blank" rel="noopener" href="https://play.google.com/apps/testing/com.captain.football">افتح صفحة التجربة</a>
     <p class="after">بعد ما تضغطه، ارجع لهنا.</p>
-    <details>
-      <summary>الصفحة تگول إن التجربة مو متاحة</summary>
-      <p>يعني الحساب مو بالمجموعة بعد. تأكد إن نفس حساب Gmail مفتوح بالصفحتين، وارجع للخطوة الأولى.</p>
-    </details>
-    <button class="back" type="button" data-goto="1">رجوع للخطوة الأولى</button>
+    <div class="warn-box">
+      <p><b>طلعتلك «<span lang="en">App not available</span>»؟</b></p>
+      <p>يعني حسابك مو بالمجموعة. ارجع للخطوة الأولى واضغط «الانضمام إلى المجموعة»، أو بدّل لنفس الحساب اللي انضميت بيه (صورة حسابك فوگ ← تبديل الحساب).</p>
+      <button class="back-strong" type="button" data-goto="1">رجوع للخطوة الأولى</button>
+    </div>
   </section>
 
   <section data-step="3">
@@ -114,8 +107,9 @@
     <a class="go" id="install" data-next="4" href="https://play.google.com/store/apps/details?id=com.captain.football">نزّل من Google Play</a>
     <p class="after">بعد التثبيت ارجع لهنا للخطوة الأخيرة.</p>
     <details>
-      <summary>المتجر يگول التطبيق مو متاح</summary>
-      <p>جوجل ياخذ كم دقيقة حتى يفعّل التجربة لحسابك. انتظر شوية واضغط الزر مرة ثانية.</p>
+      <summary>المتجر يگول «لم يتم العثور على العنصر» أو التطبيق مو متاح</summary>
+      <p>إذا هسه ضغطت «<span lang="en">Become a tester</span>»: جوجل ياخذ كم دقيقة حتى يفعّل التجربة لحسابك. انتظر شوية واضغط الزر مرة ثانية.</p>
+      <p>إذا بقت: يعني ما انضميت للمجموعة، أو Google Play فاتح بحساب ثاني. ارجع للخطوة الأولى بنفس الحساب.</p>
     </details>
     <button class="back" type="button" data-goto="2">رجوع للخطوة الثانية</button>
   </section>
