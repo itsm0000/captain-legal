@@ -58,6 +58,7 @@
   @keyframes flash { 50% { box-shadow: 0 0 0 6px var(--gold-bg); } }
   .key { display: inline-block; min-width: 1.8em; padding: 0 6px; border-radius: 8px; background: var(--soft); font-weight: 700; text-align: center; }
   #open-chrome { margin-top: 18px; font-size: 18px; }
+  .back-hint { margin: 14px 0 0; padding: 10px 14px; border-radius: 12px; background: var(--soft); color: var(--ink); font-size: 16px; }
   .copy { margin-top: 12px; padding: 14px 16px; border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
   .link-box { margin-top: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 14px/1.4 monospace; direction: ltr; }
   @media (prefers-color-scheme: dark) { .must, .warn-box { background: #3A1A1F; color: #FFD7D7; } .warn-box { border-color: #7A2E36; } .warn-box b { color: #FF9C9C; } }
@@ -103,16 +104,17 @@
       <p><b>«ليس لديك إذن للوصول إلى هذا المحتوى» عادية.</b> تطلع لكل واحد قبل ما ينضم. لا توكف عندها، اضغط الزر اللي فوگها.</p>
       <p>بعد ما تنضم تطلعلك <b>«لا توجد محادثات بعد»</b> أو «<span lang="en">No conversations yet</span>»، يعني انضميت.</p>
     </div>
-    <a class="go" data-next="2" target="_blank" rel="noopener" href="https://groups.google.com/g/captain-testers">افتح المجموعة</a>
-    <p class="after">بعد ما تنضم، ارجع لهنا وتطلعلك الخطوة الجاية. محد يشوف بريدك غيرنا.</p>
+    <a class="go" data-next="2" href="https://groups.google.com/g/captain-testers">افتح المجموعة</a>
+    <p class="back-hint">بعد ما تنضم، اضغط <b>زر الرجوع</b> بتلفونك <span class="key">◀</span> وتطلعلك الخطوة الثانية.</p>
+    <p class="after">محد يشوف بريدك غيرنا.</p>
   </section>
 
   <section data-step="2">
     <h1>فعّل التجربة</h1>
     <p class="lead">اضغط الزر الأزرق <b>«<span lang="en">Become a tester</span>»</b> أو <b>«أصبح مختبِرًا»</b> بآخر الصفحة، وبعدها ارجع هنا.</p>
     <div class="pic"><img src="become-tester.jpg" width="600" height="428" alt="صفحة Google Play للتجربة، والزر الأزرق Become a tester بآخرها"></div>
-    <a class="go" data-next="3" target="_blank" rel="noopener" href="https://play.google.com/apps/testing/com.captain.football">افتح صفحة التجربة</a>
-    <p class="after">بعد ما تضغطه، ارجع لهنا.</p>
+    <a class="go" data-next="3" href="https://play.google.com/apps/testing/com.captain.football">افتح صفحة التجربة</a>
+    <p class="back-hint">بعد ما تضغطه، اضغط <b>زر الرجوع</b> بتلفونك <span class="key">◀</span> وتطلعلك خطوة التنزيل.</p>
     <div class="warn-box">
       <p><b>طلعتلك «<span lang="en">App not available</span>»؟</b></p>
       <p>يعني حسابك مو بالمجموعة. ارجع للخطوة الأولى واضغط «الانضمام إلى المجموعة»، أو بدّل لنفس الحساب اللي انضميت بيه (صورة حسابك فوگ ← تبديل الحساب).</p>
