@@ -47,6 +47,19 @@
   .note-box b { color: var(--ink); }
   .warn-box b { color: #B42318; }
   .back-strong { margin-top: 10px; padding: 10px 16px; border: 0; border-radius: 12px; background: #B42318; color: #fff; font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .point-up { display: flex; justify-content: space-between; margin: -12px -4px 0; color: var(--gold); font-size: 34px; font-weight: 700; line-height: 1; }
+  .point-up span { animation: nudge 1.1s ease-in-out infinite; }
+  @keyframes nudge { 50% { transform: translateY(-8px); } }
+  @media (prefers-reduced-motion: reduce) { .point-up span { animation: none; } }
+  .steps { margin: 20px 0 0; padding: 14px 18px 14px 14px; padding-inline-start: 34px; text-align: start; background: var(--card); border: 2px solid var(--gold-bg); border-radius: 14px; font-size: 18px; }
+  .steps { list-style-type: arabic-indic; }
+  .steps li + li { margin-top: 8px; }
+  .steps.flash { animation: flash .9s ease-in-out 2; }
+  @keyframes flash { 50% { box-shadow: 0 0 0 6px var(--gold-bg); } }
+  .key { display: inline-block; min-width: 1.8em; padding: 0 6px; border-radius: 8px; background: var(--soft); font-weight: 700; text-align: center; }
+  #open-chrome { margin-top: 18px; font-size: 18px; }
+  .copy { margin-top: 12px; padding: 14px 16px; border: 2px solid var(--line); border-radius: 14px; background: var(--card); color: var(--ink); font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; }
+  .link-box { margin-top: 10px; width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--ink); font: 14px/1.4 monospace; direction: ltr; }
   @media (prefers-color-scheme: dark) { .must, .warn-box { background: #3A1A1F; color: #FFD7D7; } .warn-box { border-color: #7A2E36; } .warn-box b { color: #FF9C9C; } }
 </style>
 </head>
@@ -57,14 +70,21 @@
   <p class="count" id="count"></p>
 
   <!-- shown instead of the steps inside Facebook, Instagram, TikTok and other apps' own browsers, where Google often refuses sign-in -->
+  <!-- TikTok's own browser on Android ignores the Chrome button (26 Nov: visitors tapped it up to 9 times),
+       so its ⋯ menu is the main way out here, the button is a try, and copying the link is the last resort -->
   <section data-step="browser">
+    <div class="point-up" aria-hidden="true"><span>↑</span><span>↑</span></div>
     <h1>افتحها بـ Chrome أول</h1>
-    <p class="lead">فاتحها من داخل تطبيق (فيسبوك، إنستغرام، تيك توك). جوجل ما يخلّيك تسجّل دخول هنا، فافتحها بالمتصفح.</p>
-    <a class="go" id="open-chrome" href="https://itsm0000.github.io/captain-legal/join/">افتح بـ Chrome</a>
-    <details>
-      <summary>الزر ما اشتغل؟</summary>
-      <p>اضغط النقاط الثلاث فوگ (⋮ أو …) واختار «فتح في المتصفح» أو «<span lang="en">Open in browser</span>».</p>
-    </details>
+    <p class="lead">انت فاتحها من داخل تطبيق (تيك توك، فيسبوك، إنستغرام). جوجل ما يخلّيك تسجّل دخول هنا.</p>
+    <ol class="steps" id="menu-steps">
+      <li>اضغط <b>النقاط الثلاث</b> <span class="key">⋯</span> فوگ بزاوية الشاشة</li>
+      <li>اختار <b>«فتح في المتصفح»</b> أو «<span lang="en">Open in browser</span>»</li>
+    </ol>
+    <a class="go" id="open-chrome" href="https://itsm0000.github.io/captain-legal/join/">أو جرّب هذا الزر</a>
+    <p class="after" id="chrome-failed" hidden><b>الزر ما فتح Chrome؟</b> عادي، تيك توك يمنعه أحياناً. استعمل النقاط الثلاث فوگ ↑ أو انسخ الرابط.</p>
+    <button class="copy" type="button" id="copy-link">انسخ الرابط وافتحه بـ Chrome</button>
+    <p class="after" id="copied" hidden>انتسخ ✓ افتح Chrome، اضغط على شريط العنوان فوگ، والصق.</p>
+    <input class="link-box" id="link-box" readonly hidden aria-label="رابط صفحة التجربة">
     <button class="back" type="button" data-goto="resume">أكمل هنا على كل حال</button>
   </section>
 
@@ -181,6 +201,35 @@
     var carry = "?src=" + encodeURIComponent(src) + "&v=" + visit;
     document.getElementById("open-chrome").href = "intent://itsm0000.github.io/captain-legal/join/" + carry + "#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=" + encodeURIComponent(location.origin + location.pathname + carry) + ";end";
   }
+
+  // the same page for Chrome, carrying this visit's id and source
+  var plainLink = "https://itsm0000.github.io/captain-legal/join/?src=" + encodeURIComponent(src) + "&v=" + visit;
+
+  // if the Chrome button left us on this page, the app's browser blocked it: point at the menu and the copy button
+  document.getElementById("open-chrome").addEventListener("click", function () {
+    setTimeout(function () {
+      if (document.visibilityState !== "visible" || !document.querySelector('[data-step="browser"]').classList.contains("show")) return;
+      document.getElementById("chrome-failed").hidden = false;
+      var steps = document.getElementById("menu-steps");
+      steps.classList.remove("flash"); void steps.offsetWidth; steps.classList.add("flash");
+      window.scrollTo(0, 0);
+    }, 1500);
+  });
+
+  document.getElementById("copy-link").addEventListener("click", function () {
+    function done() { document.getElementById("copied").hidden = false; }
+    function manual() {
+      var box = document.getElementById("link-box");
+      box.value = plainLink; box.hidden = false; box.focus(); box.select();
+      try { if (document.execCommand("copy")) return done(); } catch (e) {}
+      document.getElementById("copied").textContent = "انسخ الرابط من المربع، وبعدين افتح Chrome والصقه.";
+      done();
+    }
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(plainLink).then(done, manual);
+    } catch (e) {}
+    manual();
+  });
 
   var shown = null;
   function show(step) {
